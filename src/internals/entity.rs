@@ -31,7 +31,6 @@ impl Clone for Entity {
 }
 
 const BLOCK_SIZE: u64 = 16;
-const BLOCK_SIZE_USIZE: usize = BLOCK_SIZE as usize;
 
 // Always divisible by BLOCK_SIZE.
 // Safety: This must never be 0, so skip the first block
@@ -109,19 +108,6 @@ pub struct LocationMap(HashMap<Entity, EntityLocation, EntityHasher>);
 
 impl Debug for LocationMap {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        /*let entries = self.blocks.iter().flat_map(|(base, locs)| {
-            locs.iter().enumerate().filter_map(move |(i, loc)| {
-                // Safety: as long as the inserted entities are valid, this should also be valid
-                let entity = unsafe {
-                    let id = *base + i as u64;
-                    debug_assert_ne!(id, 0);
-                    Entity(NonZeroU64::new_unchecked(id))
-                };
-                loc.map(|loc| (entity, loc))
-            })
-        });
-        f.debug_map().entries(entries).finish()*/
-
         f.debug_map().entries(self.0.iter()).finish()
     }
 }
