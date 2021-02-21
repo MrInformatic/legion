@@ -43,6 +43,7 @@ bincode = "1.3"
 criterion = "0.3"
 cgmath = "0.18"
 trybuild = "1.0"
+rand = "0.8.3"
 
 [[bench]]
 name = "benchmarks"
@@ -60,6 +61,10 @@ required-features = ["parallel"]
 
 [[bench]]
 name = "insertion"
+harness = false
+
+[[bench]]
+name = "location_map"
 harness = false
 
 [[test]]
