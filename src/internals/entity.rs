@@ -105,14 +105,11 @@ pub type EntityHasher = BuildHasherDefault<U64Hasher>;
 
 /// A map of entity IDs to their storage locations.
 #[derive(Clone, Default)]
-pub struct LocationMap {
-    len: usize,
-    blocks: HashMap<u64, Box<[Option<EntityLocation>; BLOCK_SIZE_USIZE]>, EntityHasher>,
-}
+pub struct LocationMap(HashMap<Entity, EntityLocation, EntityHasher>);
 
 impl Debug for LocationMap {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let entries = self.blocks.iter().flat_map(|(base, locs)| {
+        /*let entries = self.blocks.iter().flat_map(|(base, locs)| {
             locs.iter().enumerate().filter_map(move |(i, loc)| {
                 // Safety: as long as the inserted entities are valid, this should also be valid
                 let entity = unsafe {
@@ -123,24 +120,26 @@ impl Debug for LocationMap {
                 loc.map(|loc| (entity, loc))
             })
         });
-        f.debug_map().entries(entries).finish()
+        f.debug_map().entries(entries).finish()*/
+
+        f.debug_map().entries(self.0.iter()).finish()
     }
 }
 
 impl LocationMap {
     /// Returns the number of entities in the map.
     pub fn len(&self) -> usize {
-        self.len
+        self.0.len()
     }
 
     /// Returns `true` if the location map is empty.
     pub fn is_empty(&self) -> bool {
-        self.len() == 0
+        self.0.is_empty()
     }
 
     /// Returns `true` if the location map contains the given entity.
     pub fn contains(&self, entity: Entity) -> bool {
-        self.get(entity).is_some()
+        self.0.contains_key(&entity)
     }
 
     /// Inserts a collection of adjacent entities into the location map.
@@ -150,62 +149,23 @@ impl LocationMap {
         arch: ArchetypeIndex,
         ComponentIndex(base): ComponentIndex,
     ) -> Vec<EntityLocation> {
-        let mut current_block = u64::MAX;
-        let mut block_vec = None;
-        let mut removed = Vec::new();
-        for (i, entity) in ids.iter().enumerate() {
-            let block = entity.0.get() / BLOCK_SIZE;
-            if current_block != block {
-                block_vec = Some(
-                    self.blocks
-                        .entry(block)
-                        .or_insert_with(|| Box::new([None; BLOCK_SIZE_USIZE])),
-                );
-                current_block = block;
-            }
-
-            if let Some(ref mut vec) = block_vec {
-                let idx = (entity.0.get() % BLOCK_SIZE) as usize;
-                let loc = EntityLocation(arch, ComponentIndex(base + i));
-                if let Some(previous) = vec[idx].replace(loc) {
-                    removed.push(previous);
-                }
-            }
-        }
-
-        self.len += ids.len() - removed.len();
-
-        removed
+        ids.iter().enumerate()
+            .filter_map(|(i, entity)| self.0.insert(*entity, EntityLocation::new(arch, ComponentIndex(base + i))))
+            .collect()
     }
 
     /// Inserts or updates the location of an entity.
     pub fn set(&mut self, entity: Entity, location: EntityLocation) {
-        self.insert(&[entity], location.archetype(), location.component());
+        self.0.insert(entity, location);
     }
 
     /// Returns the location of an entity.
     pub fn get(&self, entity: Entity) -> Option<EntityLocation> {
-        let block = entity.0.get() / BLOCK_SIZE;
-        let idx = (entity.0.get() % BLOCK_SIZE) as usize;
-        if let Some(&result) = self.blocks.get(&block).and_then(|v| v.get(idx)) {
-            result
-        } else {
-            None
-        }
+        self.0.get(&entity).cloned()
     }
 
     /// Removes an entity from the location map.
     pub fn remove(&mut self, entity: Entity) -> Option<EntityLocation> {
-        let block = entity.0.get() / BLOCK_SIZE;
-        let idx = (entity.0.get() % BLOCK_SIZE) as usize;
-        if let Some(loc) = self.blocks.get_mut(&block).and_then(|v| v.get_mut(idx)) {
-            let original = loc.take();
-            if original.is_some() {
-                self.len -= 1;
-            }
-            original
-        } else {
-            None
-        }
+        self.0.remove(&entity)
     }
 }
