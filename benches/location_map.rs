@@ -2,7 +2,7 @@ use std::mem::MaybeUninit;
 
 use criterion::*;
 use legion::*;
-use rand::{prelude::SliceRandom, thread_rng};
+use rand::{SeedableRng, prelude::{SliceRandom, StdRng}, thread_rng};
 use world::{Allocate, LocationMap};
 
 const ENTITY_COUNTS: [usize; 5] = [1_000, 10_000, 100_000, 1_000_000, 10_000_000];
@@ -20,7 +20,7 @@ fn bench_location_map(criterion: &mut Criterion) {
             location_map.set(*entity, unsafe { MaybeUninit::uninit().assume_init() });
         }
 
-        let mut rng = thread_rng();
+        let mut rng = StdRng::from_seed([0; 32]);
 
         let choosen_entites = entities.choose_multiple(&mut rng, QUERY_COUNT)
             .cloned()    
